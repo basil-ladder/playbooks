@@ -1,0 +1,68 @@
+- hosts: basilstreamer
+  become: yes
+  tasks:
+  - name: Install ffmpeg
+    apt:
+      name: ffmpeg
+  - name: Install xvfb
+    apt:
+      name: xvfb
+      state: present
+  - name: Install chromium
+    apt:
+      name: chromium-browser
+- hosts: basilfilehoster
+  become: yes
+  vars_files:
+    - vars/default.yml
+  tasks:
+  - name: Create basil user
+    user:
+      name: basil
+  - name: Install apache
+    apt:
+      name: apache2
+  - name: Support precompressed files in apache2
+    copy:
+      src: files/headers.conf
+      dest: /etc/apache2/mods-available/headers.conf
+      owner: root
+      group: root
+      mode: 0644
+  - name: Copy basil conf
+    template:
+      src: files/basil.conf
+      dest: /etc/apache2/sites-available/basil.conf
+  - name: Copy basil conf
+    template:
+      src: files/basil.conf
+      dest: /etc/apache2/sites-available/basil.conf
+  - name: Enable precompressed files module
+    apache2_module:
+      name: headers
+  - name: Disable default site
+    shell: /usr/sbin/a2dissite 000-default.conf
+    notify: Reload Apache
+  - name: Disable default ssl site
+    shell: /usr/sbin/a2dissite 000-default-le-ssl.conf
+    notify: Reload Apache
+  - name: Create basil document root
+    file:
+      path: /var/www/basil
+      state: directory
+      owner: basil
+      mode: 0775
+  - name: Copy robots file
+    copy:
+      src: files/robots.txt
+      dest: /var/www/basil/robots.txt
+      mode: 0644
+  - name: Enable Basil site
+    shell: /usr/sbin/a2ensite basil.conf
+    notify: Reload Apache
+  
+  handlers:
+    - name: Reload Apache
+      service:
+        name: apache2
+        state: reloaded
