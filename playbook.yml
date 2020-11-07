@@ -1,3 +1,31 @@
+- hosts: basilplayer
+  become: yes
+  tasks: 
+    - name: Create basil user
+      user:
+        name: basil
+        groups: docker
+    - name: Install git
+      apt:
+        name: git
+    - name: Install docker
+      apt:
+        name: docker-ce
+    - name: Checkout sc-docker
+      become_user: basil
+      git:
+        repo: "https://github.com/basil-ladder/sc-docker.git"
+        dest: /home/basil/sc-docker
+    - name: Install scbw.play
+      become_user: basil
+      pip:
+        name: "file:///home/basil/sc-docker"
+        executable: /usr/bin/pip3
+    - name: Setup scbw.play
+      become_user: basil
+      command: scbw.play --install
+      args:
+        creates: /home/basil/.scbw
 - hosts: basilstreamer
   become: yes
   tasks:
@@ -11,6 +39,10 @@
   - name: Install chromium
     apt:
       name: chromium-browser
+  - name: Create basil user
+    user:
+      name: basil
+
 - hosts: basilfilehoster
   become: yes
   vars_files:
@@ -19,6 +51,11 @@
   - name: Create basil user
     user:
       name: basil
+  - name: Deplay basil public key
+    authorized_key:
+      user: basil
+      state: present
+      key: "{{ lookup('file', 'files/public-ssh-key') }}"
   - name: Install apache
     apt:
       name: apache2
