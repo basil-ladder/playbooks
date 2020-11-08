@@ -26,6 +26,12 @@
       command: scbw.play --install
       args:
         creates: /home/basil/.scbw
+    - name: Checkout basil
+      become_user: basil
+      git:
+        repo: "https://github.com/basil-ladder/basil.git"
+        dest: /home/basil/main
+
 - hosts: basilstreamer
   become: yes
   tasks:
@@ -59,10 +65,16 @@
   - name: Install apache
     apt:
       name: apache2
+  - name: Create basil document root
+    file:
+      path: /etc/apache2/include
+      state: directory
+      owner: basil
+      mode: 0775
   - name: Support precompressed files in apache2
     copy:
-      src: files/headers.conf
-      dest: /etc/apache2/mods-available/headers.conf
+      src: files/pre-compressed.conf
+      dest: /etc/apache2/include/pre-compressed.conf
       owner: root
       group: root
       mode: 0644
@@ -70,13 +82,15 @@
     template:
       src: files/basil.conf
       dest: /etc/apache2/sites-available/basil.conf
-  - name: Copy basil conf
-    template:
-      src: files/basil.conf
-      dest: /etc/apache2/sites-available/basil.conf
+      owner: root
+      group: root
+      mode: 0644
   - name: Enable precompressed files module
     apache2_module:
       name: headers
+  - name: Enable precompressed files module
+    apache2_module:
+      name: rewrite
   - name: Disable default site
     shell: /usr/sbin/a2dissite 000-default.conf
     notify: Reload Apache
